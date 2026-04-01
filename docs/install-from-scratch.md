@@ -2,16 +2,16 @@
 
 This walkthrough assumes you are setting up `package-safety-toolkit` on a Mac for the first time.
 
-## 1. Download The Repo
+## Download The Repo
 
-Option A, Git clone:
+### Clone it with Git
 
 ```sh
-git clone <repo-url> ~/src/package-safety-toolkit
+git clone https://github.com/ykessler/package-safety-toolkit.git ~/src/package-safety-toolkit
 cd ~/src/package-safety-toolkit
 ```
 
-Option B, ZIP download:
+### Or download a ZIP
 
 1. Download the repo ZIP from GitHub.
 2. Extract it somewhere permanent, for example `~/src/package-safety-toolkit`.
@@ -19,9 +19,24 @@ Option B, ZIP download:
 
 The repo can live anywhere. The recommended pattern is to keep it in a stable personal tools directory and let the installer copy the runnable files into the standard locations.
 
-## 2. Decide Which Install Command You Want
+## Recommended First-Time Setup
 
-### Option 1: Install Files Only
+If you just want the normal setup, run this:
+
+```sh
+./bin/install-package-safety --run-bootstrap --load-agent
+```
+
+This:
+
+- installs the files
+- applies the package-manager settings immediately
+- clears caches once
+- enables the LaunchAgent for future automatic refreshes
+
+## Other Install Modes
+
+### Install files only
 
 ```sh
 ./bin/install-package-safety
@@ -40,7 +55,7 @@ What it does not do:
 
 Use this if you want to inspect the files first.
 
-### Option 2: Install And Apply Settings Now
+### Apply settings now, but do not enable the scheduler yet
 
 ```sh
 ./bin/install-package-safety --run-bootstrap
@@ -60,7 +75,7 @@ What it does not do:
 
 Use this if you want immediate changes but not automation yet.
 
-### Option 3: Install And Enable The Automatic Weekly Refresh
+### Enable the scheduler, but skip the one-time cache clear
 
 ```sh
 ./bin/install-package-safety --load-agent
@@ -80,22 +95,7 @@ What it does not do:
 
 Use this if you want the ongoing scheduler and do not care about the one-time cache reset.
 
-### Option 4: Recommended First-Time Setup
-
-```sh
-./bin/install-package-safety --run-bootstrap --load-agent
-```
-
-What it does:
-
-- installs the files
-- applies the settings immediately with bootstrap
-- clears caches once
-- loads the LaunchAgent for future automatic refreshes
-
-Use this if you want the full setup in one pass.
-
-## 3. Know Where The Files Go
+## Know Where The Files Go
 
 By default:
 
@@ -105,38 +105,43 @@ By default:
 
 The installer script itself stays in the repo. It is not copied into `~/.local/bin/`.
 
-## 4. Manual Commands After Install
+## Manual Commands After Install
 
-Run the one-time bootstrap manually:
+### Run the one-time bootstrap manually
 
 ```sh
 ~/.local/bin/package-safety-bootstrap
 ```
 
-Run the weekly refresh manually:
+### Run the weekly refresh manually
 
 ```sh
 ~/.local/bin/package-safety-refresh-weekly
 ```
 
-Load the LaunchAgent manually:
+### Load the LaunchAgent manually
 
 ```sh
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.package-safety.refresh.plist
 ```
 
-Unload it later:
+### Unload it later
 
 ```sh
 launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/local.package-safety.refresh.plist
 ```
 
-## 5. Updating Later
+## Updating Later
 
-If you keep the repo in Git:
+### Pull the latest repo changes
 
 ```sh
 git pull
+```
+
+### Reinstall the updated scripts and plist
+
+```sh
 ./bin/install-package-safety --load-agent
 ```
 
@@ -146,7 +151,7 @@ Use this instead if you also want to re-run the one-time bootstrap and clear cac
 ./bin/install-package-safety --run-bootstrap --load-agent
 ```
 
-## 6. If A Tool Is Missing
+## If A Tool Is Missing
 
 The scripts work even if some package managers are not installed. They print a warning and skip the missing tool.
 

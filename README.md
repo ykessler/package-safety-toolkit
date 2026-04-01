@@ -2,6 +2,57 @@
 
 Portable scripts and launchd wiring for a conservative macOS package safety baseline.
 
+## Quick Start
+
+Most people should use this exact flow on a new Mac:
+
+### Download the repo
+
+If you have GitHub access:
+
+```sh
+git clone https://github.com/ykessler/package-safety-toolkit.git ~/src/package-safety-toolkit
+cd ~/src/package-safety-toolkit
+```
+
+If you are not using Git:
+
+- open the GitHub repo in a browser
+- choose `Code` then `Download ZIP`
+- extract it somewhere permanent, for example `~/src/package-safety-toolkit`
+- open Terminal and run:
+
+```sh
+cd ~/src/package-safety-toolkit
+```
+
+### Run the recommended install command
+
+```sh
+./bin/install-package-safety --run-bootstrap --load-agent
+```
+
+This does four things:
+
+- installs the runnable scripts into `~/.local/bin/`
+- installs the LaunchAgent plist into `~/Library/LaunchAgents/`
+- applies the package-manager safety settings immediately
+- clears caches once, then enables an automatic weekly refresh
+
+### What happens after install
+
+By default:
+
+- the one-time bootstrap runs immediately
+- the LaunchAgent also runs the weekly refresh once immediately because it uses `RunAtLoad`
+- after that, the refresh runs again on login and every Monday at 9:00 AM local time unless you change the schedule
+
+Installed file locations:
+
+- scripts: `~/.local/bin/`
+- plist: `~/Library/LaunchAgents/local.package-safety.refresh.plist`
+- log file: `~/Library/Logs/package-safety-refresh.log`
+
 ## What This Repo Is For
 
 This repo gives you a reusable, per-user macOS setup for:
@@ -22,68 +73,97 @@ Keep the repo itself anywhere permanent, for example `~/src/package-safety-toolk
 
 If a package manager is missing, the scripts print a warning and skip that part.
 
-## From Scratch
+## Install Modes
 
-1. Get the repo onto the Mac.
-
-Clone it anywhere you keep personal tooling:
+### Recommended: full setup now plus weekly refresh
 
 ```sh
-git clone <repo-url> ~/src/package-safety-toolkit
-cd ~/src/package-safety-toolkit
+./bin/install-package-safety --run-bootstrap --load-agent
 ```
 
-If you are not using Git, download the repo as a ZIP, extract it somewhere permanent, and `cd` into the extracted folder.
+Use this on a new Mac if you want the full setup in one pass.
 
-2. Choose the installer mode you want.
+What it does:
 
-`./bin/install-package-safety`
+- installs the files
+- applies the settings immediately with bootstrap
+- clears caches once
+- loads the LaunchAgent for future automatic refreshes
 
-- Copies the scripts into `~/.local/bin/`
-- Writes the LaunchAgent plist into `~/Library/LaunchAgents/`
-- Does not run the bootstrap script
-- Does not load the LaunchAgent
+### Install files only
 
-Use this when you want to inspect the installed files first and trigger everything manually.
+```sh
+./bin/install-package-safety
+```
 
-`./bin/install-package-safety --run-bootstrap`
+Use this if you want to inspect the installed files before making changes.
 
-- Installs the files
-- Runs `package-safety-bootstrap`
-- Applies the settings immediately
-- Clears Bun, npm, pip, and uv caches once
-- Does not load the LaunchAgent
+What it does:
 
-Use this when you want the safety settings now but do not want automatic scheduling yet.
+- installs the scripts into `~/.local/bin/`
+- writes the LaunchAgent plist into `~/Library/LaunchAgents/`
 
-`./bin/install-package-safety --load-agent`
+What it does not do:
 
-- Installs the files
-- Loads or reloads the LaunchAgent
-- Because the plist has `RunAtLoad`, this immediately runs `package-safety-refresh-weekly` once
-- Does not run the bootstrap script
-- Does not clear caches
+- does not apply the package-manager settings yet
+- does not clear caches
+- does not load the LaunchAgent
 
-Use this when you want the ongoing schedule and you do not care about clearing caches right now.
+### Apply settings now, but do not enable the scheduler yet
 
-`./bin/install-package-safety --run-bootstrap --load-agent`
+```sh
+./bin/install-package-safety --run-bootstrap
+```
 
-- Installs the files
-- Applies the settings immediately with bootstrap
-- Clears caches once
-- Loads the LaunchAgent for future automatic runs
+Use this if you want immediate changes but not automation yet.
 
-Use this as the normal first-time setup if you want both immediate protection and weekly refresh.
+What it does:
 
-3. Confirm where the installer wrote everything.
+- installs the files
+- runs `package-safety-bootstrap`
+- applies the settings immediately
+- clears Bun, npm, pip, and uv caches once
 
-By default the installer writes:
+What it does not do:
 
-- scripts to `~/.local/bin/`
-- plist to `~/Library/LaunchAgents/`
-- logs to `~/Library/Logs/package-safety-refresh.log`
+- does not load the LaunchAgent
+- does not schedule future weekly refreshes yet
 
-4. If you did not use `--load-agent`, load the LaunchAgent later when you are ready.
+### Enable the scheduler, but skip the one-time cache clear
+
+```sh
+./bin/install-package-safety --load-agent
+```
+
+Use this if you want the ongoing scheduler and you do not care about the bootstrap cache reset right now.
+
+What it does:
+
+- installs the files
+- loads or reloads the LaunchAgent
+- immediately runs `package-safety-refresh-weekly` once because the plist uses `RunAtLoad`
+- enables future runs at login and on the weekly schedule
+
+What it does not do:
+
+- does not run `package-safety-bootstrap`
+- does not clear caches
+
+## Manual Commands
+
+### Run the one-time bootstrap manually
+
+```sh
+~/.local/bin/package-safety-bootstrap
+```
+
+### Run the weekly refresh manually
+
+```sh
+~/.local/bin/package-safety-refresh-weekly
+```
+
+### Load the LaunchAgent manually
 
 ```sh
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.package-safety.refresh.plist
@@ -91,18 +171,10 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.package-safety.ref
 
 That command also runs the weekly refresh once immediately because the plist has `RunAtLoad`.
 
-## Recommended Commands
-
-Most people should use this on first setup:
+### Unload the LaunchAgent manually
 
 ```sh
-./bin/install-package-safety --run-bootstrap --load-agent
-```
-
-If you want a dry install first and no setting changes yet:
-
-```sh
-./bin/install-package-safety
+launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/local.package-safety.refresh.plist
 ```
 
 ## What It Installs
@@ -145,13 +217,13 @@ These can be overridden with environment variables:
 
 ## Updating An Existing Install
 
-1. Update the repo where you cloned it:
+### Pull the latest repo changes
 
 ```sh
 git pull
 ```
 
-2. Re-run the installer:
+### Re-run the installer
 
 ```sh
 ./bin/install-package-safety --load-agent
