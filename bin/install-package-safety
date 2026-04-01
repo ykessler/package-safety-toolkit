@@ -34,9 +34,17 @@ Usage: install-package-safety [--load-agent] [--run-bootstrap]
 Installs the package safety scripts into ~/.local/bin by default and writes a
 LaunchAgent plist into ~/Library/LaunchAgents by default.
 
+Default behavior:
+  Installs files only. Does not apply package-manager settings yet and does not
+  load the LaunchAgent yet.
+
 Options:
-  --load-agent     Reload the LaunchAgent after writing the plist.
-  --run-bootstrap  Run the installed bootstrap script after installation.
+  --run-bootstrap  Run package-safety-bootstrap after installation. This
+                   applies the settings now and clears caches once.
+  --load-agent     Load or reload the LaunchAgent after writing the plist.
+                   Because the plist uses RunAtLoad, this immediately runs the
+                   weekly refresh once, then again on future logins and the
+                   weekly schedule.
   --help           Show this help.
 
 Environment overrides:
@@ -72,7 +80,6 @@ render_plist() {
 load_agent() {
   launchctl bootout "gui/$(id -u)" "$PLIST_DEST" >/dev/null 2>&1 || true
   launchctl bootstrap "gui/$(id -u)" "$PLIST_DEST"
-  launchctl kickstart -k "gui/$(id -u)/$LABEL"
 }
 
 while [ $# -gt 0 ]; do
@@ -112,14 +119,17 @@ log "  $PLIST_DEST"
 if [ "$RUN_BOOTSTRAP" -eq 1 ]; then
   "$BOOTSTRAP_DEST"
 else
-  log "Bootstrap not run. To apply settings now:"
+  log "Bootstrap not run. Settings have not been applied by bootstrap."
+  log "To apply settings now with cache clearing:"
   log "  $BOOTSTRAP_DEST"
 fi
 
 if [ "$LOAD_AGENT" -eq 1 ]; then
   load_agent
+  log "LaunchAgent loaded. Because RunAtLoad is enabled, the weekly refresh"
+  log "will run once now, then again on login and on the weekly schedule."
 else
   log "LaunchAgent not loaded. To load it now:"
   log "  launchctl bootstrap gui/$(id -u) \"$PLIST_DEST\""
-  log "  launchctl kickstart -k gui/$(id -u)/$LABEL"
+  log "That will also run the weekly refresh once immediately."
 fi
