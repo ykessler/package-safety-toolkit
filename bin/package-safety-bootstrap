@@ -1,0 +1,23 @@
+#!/bin/sh
+
+set -u
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+. "$SCRIPT_DIR/package-safety-global-lib.sh"
+
+status=0
+
+log "== Applying package safety global baseline =="
+print_toolchain_report
+ensure_bun_global_config || status=1
+configure_npm_global || status=1
+configure_pip_global || status=1
+ensure_uv_global_config || status=1
+clear_package_caches || status=1
+
+if [ "$status" -ne 0 ]; then
+  warn "package safety bootstrap completed with errors"
+  exit 1
+fi
+
+log "Package safety bootstrap completed successfully."
