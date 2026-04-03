@@ -16,11 +16,14 @@ MINUTE=${PACKAGE_SAFETY_MINUTE:-0}
 BOOTSTRAP_SRC="$REPO_ROOT/bin/package-safety-bootstrap"
 REFRESH_SRC="$REPO_ROOT/bin/package-safety-refresh-weekly"
 LIB_SRC="$REPO_ROOT/bin/package-safety-global-lib.sh"
+PIP_WRAPPER_SRC="$REPO_ROOT/bin/pip-uv-wrapper"
 PLIST_TEMPLATE="$REPO_ROOT/launchd/local.package-safety.refresh.plist.template"
 
 BOOTSTRAP_DEST="$BIN_DIR/package-safety-bootstrap"
 REFRESH_DEST="$BIN_DIR/package-safety-refresh-weekly"
 LIB_DEST="$BIN_DIR/package-safety-global-lib.sh"
+PIP_WRAPPER_DEST="$BIN_DIR/pip"
+PIP3_WRAPPER_DEST="$BIN_DIR/pip3"
 PLIST_DEST="$PLIST_DIR/$LABEL.plist"
 LOG_FILE="$LOG_DIR/package-safety-refresh.log"
 
@@ -107,12 +110,17 @@ install -d "$BIN_DIR" "$PLIST_DIR" "$LOG_DIR"
 install -m 755 "$LIB_SRC" "$LIB_DEST"
 install -m 755 "$BOOTSTRAP_SRC" "$BOOTSTRAP_DEST"
 install -m 755 "$REFRESH_SRC" "$REFRESH_DEST"
+install -m 755 "$PIP_WRAPPER_SRC" "$PIP_WRAPPER_DEST"
+install -m 755 "$PIP_WRAPPER_SRC" "$PIP3_WRAPPER_DEST"
 render_plist
 
 log "Installed scripts:"
 log "  $LIB_DEST"
 log "  $BOOTSTRAP_DEST"
 log "  $REFRESH_DEST"
+log "Installed pip/pip3 uv wrappers:"
+log "  $PIP_WRAPPER_DEST"
+log "  $PIP3_WRAPPER_DEST"
 log "Installed LaunchAgent plist:"
 log "  $PLIST_DEST"
 

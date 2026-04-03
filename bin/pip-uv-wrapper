@@ -1,0 +1,35 @@
+#!/bin/sh
+# pip/pip3 uv wrapper — installed by package-safety-toolkit
+#
+# Redirects pip commands through uv when available, ensuring the
+# safety policy in uv's global config (exclude-newer) is applied
+# even when callers (agents, scripts) invoke pip directly.
+#
+# Falls back to the real pip/pip3 if uv is not installed.
+# Virtualenv pip takes precedence because venv bin dirs appear
+# earlier in PATH than ~/.local/bin.
+
+set -u
+
+cmd_name=$(basename "$0")
+
+# Prefer uv pip when available
+if command -v uv >/dev/null 2>&1; then
+  exec uv pip "$@"
+fi
+
+# uv not available — find the real pip/pip3, skipping this wrapper
+self=$(CDPATH= cd -- "$(dirname "$0")" && pwd)/"$cmd_name"
+
+IFS=:
+for dir in $PATH; do
+  [ -z "$dir" ] && continue
+  candidate="$dir/$cmd_name"
+  if [ -x "$candidate" ] && [ "$candidate" != "$self" ]; then
+    exec "$candidate" "$@"
+  fi
+done
+unset IFS
+
+printf '%s: uv is not installed and no system %s found in PATH\n' "$cmd_name" "$cmd_name" >&2
+exit 127

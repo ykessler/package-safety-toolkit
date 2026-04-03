@@ -113,6 +113,19 @@ print_toolchain_report() {
   else
     warn "uv not found; expected config path is $uv_config"
   fi
+
+  pip_wrapper_dir="${PACKAGE_SAFETY_BIN_DIR:-$HOME/.local/bin}"
+  if [ -f "$pip_wrapper_dir/pip" ] && grep -q 'pip-uv-wrapper' "$pip_wrapper_dir/pip" 2>/dev/null; then
+    if have_cmd uv; then
+      log "pip wrapper: $pip_wrapper_dir/pip → uv pip (active)"
+      log "pip3 wrapper: $pip_wrapper_dir/pip3 → uv pip (active)"
+    else
+      log "pip wrapper: $pip_wrapper_dir/pip → uv pip (installed, uv not yet available)"
+      log "pip3 wrapper: $pip_wrapper_dir/pip3 → uv pip (installed, uv not yet available)"
+    fi
+  else
+    warn "pip uv wrappers not installed in $pip_wrapper_dir"
+  fi
 }
 
 configure_npm_global() {
