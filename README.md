@@ -73,6 +73,17 @@ Keep the repo itself anywhere permanent, for example `~/src/package-safety-toolk
 
 If a package manager is missing, the scripts print a warning and skip that part.
 
+### Recommended: install bun and uv first
+
+For the strongest coverage, install bun and uv before running the toolkit:
+
+```sh
+brew install oven-sh/bun/bun
+brew install uv
+```
+
+Both are modern, fast replacements for their respective ecosystems (npm and pip). The toolkit installs pip/pip3 wrapper scripts that transparently redirect pip calls through uv, which is especially useful for AI coding agents that invoke pip directly — the uv safety policy applies automatically without the agent needing to know about it.
+
 ## Install Modes
 
 ### Recommended: full setup now plus weekly refresh
@@ -182,6 +193,7 @@ launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/local.package-safety.refre
 - `bin/package-safety-bootstrap`
 - `bin/package-safety-refresh-weekly`
 - `bin/package-safety-global-lib.sh`
+- `bin/pip-uv-wrapper` (installed as `~/.local/bin/pip` and `pip3`)
 - `bin/install-package-safety`
 - `launchd/local.package-safety.refresh.plist.template`
 - `docs/package-safety-short-checklist.md`
@@ -194,6 +206,7 @@ This toolkit only covers the easy global settings:
 - `npm`: `min-release-age=7` when supported, otherwise a rolling `before=...` cutoff
 - `pip`: rolling `install.uploaded-prior-to=...` cutoff
 - `uv`: global `exclude-newer = "1 week"`
+- `pip`/`pip3` wrapper scripts that redirect through `uv pip` when uv is available, ensuring the uv safety policy applies to all direct pip calls (including from AI agents)
 
 It does not install a proxy, enforce network egress policy, or manage per-project settings for `pnpm`, Yarn, or Poetry.
 
