@@ -2,6 +2,26 @@
 
 Portable scripts and launchd wiring for a conservative macOS package safety baseline.
 
+## Requirements
+
+- macOS
+- a POSIX shell (`/bin/sh`)
+- standard macOS tools such as `install`, `sed`, `awk`, `launchctl`, and `date`
+- optional package managers: `bun`, `npm`, `python3`/`pip`, and `uv`
+
+If a package manager is missing, the scripts print a warning and skip that part.
+
+### Recommended: install bun and uv first
+
+For the strongest coverage, install bun and uv before running the toolkit:
+
+```sh
+brew install oven-sh/bun/bun
+brew install uv
+```
+
+Both are modern, fast replacements for their respective ecosystems (npm and pip). The toolkit installs pip/pip3 wrapper scripts that transparently redirect pip calls through uv, which is especially useful for AI coding agents that invoke pip directly — the uv safety policy applies automatically without the agent needing to know about it.
+
 ## Quick Start
 
 Most people should use this exact flow on a new Mac:
@@ -63,26 +83,6 @@ This repo gives you a reusable, per-user macOS setup for:
 - installing a LaunchAgent plist into `~/Library/LaunchAgents/`
 
 Keep the repo itself anywhere permanent, for example `~/src/package-safety-toolkit` or another personal tools directory. The installer copies the runnable files out of the repo into the standard per-user locations.
-
-## Requirements
-
-- macOS
-- a POSIX shell (`/bin/sh`)
-- standard macOS tools such as `install`, `sed`, `awk`, `launchctl`, and `date`
-- optional package managers: `bun`, `npm`, `python3`/`pip`, and `uv`
-
-If a package manager is missing, the scripts print a warning and skip that part.
-
-### Recommended: install bun and uv first
-
-For the strongest coverage, install bun and uv before running the toolkit:
-
-```sh
-brew install oven-sh/bun/bun
-brew install uv
-```
-
-Both are modern, fast replacements for their respective ecosystems (npm and pip). The toolkit installs pip/pip3 wrapper scripts that transparently redirect pip calls through uv, which is especially useful for AI coding agents that invoke pip directly — the uv safety policy applies automatically without the agent needing to know about it.
 
 ## Install Modes
 
