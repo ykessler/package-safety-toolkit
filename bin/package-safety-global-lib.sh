@@ -115,7 +115,7 @@ print_toolchain_report() {
   fi
 
   pip_wrapper_dir="${PACKAGE_SAFETY_BIN_DIR:-$HOME/.local/bin}"
-  if [ -f "$pip_wrapper_dir/pip" ] && grep -q 'pip-uv-wrapper' "$pip_wrapper_dir/pip" 2>/dev/null; then
+  if [ -f "$pip_wrapper_dir/pip" ] && grep -q 'package-safety-toolkit' "$pip_wrapper_dir/pip" 2>/dev/null; then
     if have_cmd uv; then
       log "pip wrapper: $pip_wrapper_dir/pip → uv pip (active)"
       log "pip3 wrapper: $pip_wrapper_dir/pip3 → uv pip (active)"
@@ -288,7 +288,12 @@ clear_package_caches() {
 
   if have_cmd bun; then
     log "Clearing Bun cache"
-    bun pm cache rm || status=1
+    temp_bun_dir=$(mktemp -d "${TMPDIR:-/tmp}/bun-cache-clear.XXXXXX") || { status=1; }
+    if [ -n "${temp_bun_dir:-}" ]; then
+      printf '{}' > "$temp_bun_dir/package.json"
+      (cd "$temp_bun_dir" && bun pm cache rm) || status=1
+      rm -rf "$temp_bun_dir"
+    fi
   else
     warn "bun not found; skipped Bun cache clear"
   fi
