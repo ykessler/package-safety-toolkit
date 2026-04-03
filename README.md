@@ -1,6 +1,6 @@
 # Package Safety Toolkit
 
-Portable scripts and launchd wiring for a conservative macOS package safety baseline.
+Imposes a 7-day quarantine on new package releases across bun, npm, pip, and uv — the highest-ROI defense against supply-chain attacks on a Mac developer machine.
 
 ## Requirements
 
