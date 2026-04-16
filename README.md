@@ -194,6 +194,7 @@ launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/local.package-safety.refre
 - `bin/package-safety-refresh-weekly`
 - `bin/package-safety-global-lib.sh`
 - `bin/pip-uv-wrapper` (installed as `~/.local/bin/pip` and `pip3`)
+- `bin/npm-wrapper` (installed as `~/.local/bin/npm`)
 - `bin/install-package-safety`
 - `launchd/local.package-safety.refresh.plist.template`
 - `docs/package-safety-short-checklist.md`
@@ -207,6 +208,7 @@ This toolkit only covers the easy global settings:
 - `pip`: rolling `install.uploaded-prior-to=...` cutoff
 - `uv`: global `exclude-newer = "1 week"`
 - `pip`/`pip3` wrapper scripts that redirect through `uv pip` when uv is available, ensuring the uv safety policy applies to all direct pip calls (including from AI agents)
+- `npm` wrapper script that prints a visible quarantine banner on install/update commands and warns when specific packages are held back by the quarantine policy, including the bypass command
 
 It does not install a proxy, enforce network egress policy, or manage per-project settings for `pnpm`, Yarn, or Poetry.
 

@@ -1,0 +1,202 @@
+#!/bin/sh
+# npm quarantine wrapper — installed by package-safety-toolkit
+#
+# Wraps npm to provide visible warnings when the 7-day quarantine
+# policy holds back package versions during install/update operations.
+#
+# Passes through transparently for non-install commands and when no
+# quarantine policy is active in ~/.npmrc.
+
+set -u
+
+# ── locate the real npm, skipping this wrapper ──
+
+self=$(CDPATH= cd -- "$(dirname "$0")" && pwd)/npm
+
+real_npm=""
+IFS=:
+for dir in $PATH; do
+  [ -z "$dir" ] && continue
+  candidate="$dir/npm"
+  if [ -x "$candidate" ] && [ "$candidate" != "$self" ]; then
+    real_npm="$candidate"
+    break
+  fi
+done
+unset IFS
+
+if [ -z "$real_npm" ]; then
+  printf 'npm: no system npm found in PATH\n' >&2
+  exit 127
+fi
+
+# ── fast path: only intercept install-type subcommands ──
+
+is_install=0
+for arg in "$@"; do
+  case "$arg" in
+    -*)                           continue ;;
+    install|i|add|update|upgrade) is_install=1; break ;;
+    *)                            break ;;
+  esac
+done
+
+if [ "$is_install" -eq 0 ]; then
+  exec "$real_npm" "$@"
+fi
+
+# ── check whether quarantine is active in ~/.npmrc ──
+
+quarantine_desc=""
+npmrc="${HOME}/.npmrc"
+
+if [ -f "$npmrc" ]; then
+  val=$(grep -E '^before=' "$npmrc" 2>/dev/null | head -1 | sed 's/^before=//')
+  if [ -n "$val" ]; then
+    quarantine_desc="before=$val"
+  else
+    val=$(grep -E '^min-release-age=' "$npmrc" 2>/dev/null | head -1 | sed 's/^min-release-age=//')
+    if [ -n "$val" ] && [ "$val" != "0" ]; then
+      quarantine_desc="min-release-age=${val}d"
+    fi
+  fi
+fi
+
+if [ -z "$quarantine_desc" ]; then
+  exec "$real_npm" "$@"
+fi
+
+# ── parse arguments: subcommand, flags, package specs ──
+
+subcommand=""
+global_flag=0
+pkg_specs=""
+past_subcommand=0
+
+for arg in "$@"; do
+  case "$arg" in
+    -g|--global) global_flag=1; continue ;;
+  esac
+
+  if [ "$past_subcommand" -eq 0 ]; then
+    case "$arg" in
+      -*)                           continue ;;
+      install|i|add|update|upgrade) subcommand="$arg"; past_subcommand=1; continue ;;
+      *)                            past_subcommand=1; pkg_specs="$arg"; continue ;;
+    esac
+  fi
+
+  case "$arg" in
+    -*) ;;
+    *)  pkg_specs="${pkg_specs:+$pkg_specs }$arg" ;;
+  esac
+done
+
+# ── print quarantine banner ──
+
+printf '\n\033[33m📦 package-safety-toolkit: 7-day quarantine is active (%s)\033[0m\n' "$quarantine_desc"
+printf '   Packages published in the last 7 days will be held back.\n\n'
+
+# ── run the real npm ──
+
+"$real_npm" "$@"
+npm_exit=$?
+
+# ── skip per-package check if no packages named or npm failed ──
+
+if [ -z "$pkg_specs" ] || [ "$npm_exit" -ne 0 ]; then
+  exit "$npm_exit"
+fi
+
+# python3 is needed for JSON parsing; skip check gracefully if missing
+if ! command -v python3 >/dev/null 2>&1; then
+  exit "$npm_exit"
+fi
+
+# ── helpers ──
+
+# Extract package name from a spec, stripping any @version suffix.
+# Examples: foo@^2 → foo, @scope/bar@1.0 → @scope/bar
+pkg_name_from_spec() {
+  _spec="$1"
+  case "$_spec" in
+    @*) _rest="${_spec#@}"; printf '@%s' "${_rest%%@*}" ;;
+    *)  printf '%s' "${_spec%%@*}" ;;
+  esac
+}
+
+# Build a registry URL, encoding the / in scoped package names.
+registry_url_for() {
+  _name="$1"
+  case "$_name" in
+    @*) printf 'https://registry.npmjs.org/%s' "$(printf '%s' "$_name" | sed 's|/|%2f|g')" ;;
+    *)  printf 'https://registry.npmjs.org/%s' "$_name" ;;
+  esac
+}
+
+# ── collect installed versions in one npm-ls call ──
+
+if [ "$global_flag" -eq 1 ]; then
+  ls_json=$("$real_npm" ls -g --depth=0 --json 2>/dev/null) || ls_json=""
+else
+  ls_json=$("$real_npm" ls --depth=0 --json 2>/dev/null) || ls_json=""
+fi
+
+# ── check each explicitly named package ──
+
+found=0
+
+for spec in $pkg_specs; do
+  name=$(pkg_name_from_spec "$spec")
+
+  # Installed version from the npm-ls snapshot
+  installed=$(printf '%s' "$ls_json" | python3 -c "
+import sys, json
+name = sys.argv[1]
+try:
+    d = json.load(sys.stdin)
+    print(d.get('dependencies', {}).get(name, {}).get('version', ''))
+except Exception:
+    pass
+" "$name" 2>/dev/null)
+  [ -z "$installed" ] && continue
+
+  # Latest version and publish date from registry (bypasses npm config)
+  url=$(registry_url_for "$name")
+  reg=$(curl -s --max-time 5 "$url" 2>/dev/null) || continue
+
+  info=$(printf '%s' "$reg" | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    v = d.get('dist-tags', {}).get('latest', '')
+    t = d.get('time', {}).get(v, '')
+    print(v)
+    print(t[:10] if t else '')
+except Exception:
+    pass
+" 2>/dev/null)
+  latest=$(printf '%s' "$info" | sed -n '1p')
+  pub_date=$(printf '%s' "$info" | sed -n '2p')
+  [ -z "$latest" ] && continue
+
+  if [ "$installed" != "$latest" ]; then
+    found=$((found + 1))
+    [ "$found" -eq 1 ] && printf '\n'
+
+    printf '\033[33m⚠️  QUARANTINED: %s\033[0m\n' "$name"
+    if [ -n "$pub_date" ]; then
+      printf '   Installed %s — latest is %s (published %s)\n' "$installed" "$latest" "$pub_date"
+    else
+      printf '   Installed %s — latest is %s\n' "$installed" "$latest"
+    fi
+
+    if [ "$global_flag" -eq 1 ]; then
+      printf '   To bypass: npm %s -g %s --before=2099-01-01\n' "$subcommand" "$spec"
+    else
+      printf '   To bypass: npm %s %s --before=2099-01-01\n' "$subcommand" "$spec"
+    fi
+  fi
+done
+
+exit "$npm_exit"
